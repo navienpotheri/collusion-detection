@@ -159,6 +159,10 @@ class OpenAIClient(ModelWrapper):
         return None
 
 
+# Claude models verified to reject `temperature` (HTTP 400 "deprecated for this model").
+NO_TEMPERATURE_CLAUDE = {"claude-haiku-5-5"}
+
+
 class AnthropicClient(ModelWrapper):
     def __init__(self, model_name: str, **kwargs):
         super().__init__(model_name, **kwargs)
@@ -175,16 +179,18 @@ class AnthropicClient(ModelWrapper):
             system = "You are a helpful assistant."
         for attempt in range(self.max_retries):
             try:
+                # Some Claude models reject `temperature` (HTTP 400); send it only where accepted.
+                sampling = {} if self.model_name in NO_TEMPERATURE_CLAUDE else {"temperature": self.temperature}
                 response = self.client.messages.create(
                     model=self.model_name,
                     system=system,
                     messages=messages,
                     max_tokens=self.max_tokens,
-                    temperature=self.temperature,
-                    top_p=self.top_p,
+                    **sampling,
                     **self.additional_params,
                 )
-                return response.content[0].text
+                # newer Claude models can return thinking blocks first; take the text block
+                return "".join(b.text for b in response.content if getattr(b, "type", None) == "text")
             except (APIConnectionError, RateLimitError, APIStatusError) as e:
                 logger.warning(f"Anthropic API error (attempt {attempt + 1}/{self.max_retries}): {e}")
                 if attempt == self.max_retries - 1:

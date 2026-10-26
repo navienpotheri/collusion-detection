@@ -17,6 +17,19 @@ def get_client(model: str, temperature: float, **kwargs) -> ModelWrapper:
     automatically for models that do not support it.
     """
     provider = os.getenv("LLM_PROVIDER", "openrouter").lower()
+    if provider == "auto":
+        # route each model to its own provider so one game can mix families;
+        # every other name still goes to OpenRouter as before
+        name = model.lower()
+        if name.startswith("gpt"):
+            from src.resources.model_wrappers import OpenAIClient
+            kwargs.setdefault("response_format", {"type": "json_object"})
+            return OpenAIClient(model, temperature=temperature, **kwargs)
+        if name.startswith("claude"):
+            from src.resources.model_wrappers import AnthropicClient
+            kwargs.pop("seed", None)  # Anthropic's API has no seed parameter, so these runs are not seed-reproducible
+            return AnthropicClient(model, temperature=temperature, **kwargs)
+        provider = "openrouter"
     if provider == "openrouter":
         kwargs.setdefault("response_format", {"type": "json_object"})
         return ModelWrapper.create(resolve_model(model), temperature=temperature, **kwargs)

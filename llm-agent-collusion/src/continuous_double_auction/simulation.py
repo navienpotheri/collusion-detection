@@ -313,6 +313,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="share of seller messages the overseer sees each round (try 0.25, 0.5, 1.0)",
     )
     a.add_argument("--boss_pressure", action="store_true", help="CEO message pressuring sellers to keep prices high")
+    a.add_argument("--monitor_notice", action="store_true", help="Layer 5: tell sellers the market is monitored by a regulator")
+    a.add_argument("--disclose_cutoff", type=float, default=0.0, help="Layer 6 check: state the collusion cutoff to sellers")
+    a.add_argument("--hide_rival_asks", action="store_true", help="Layer 1 counterfactual: sellers see only their own asks")
+    a.add_argument("--ask_round", type=float, default=0.0, help="Layer 7: round posted asks to nearest multiple of this")
+    a.add_argument("--ask_noise", type=float, default=0.0, help="Layer 7: std dev of noise added to posted asks")
 
     o = p.add_argument_group("output")
     o.add_argument("--tag", type=str, default="", help="run name suffix")
@@ -375,6 +380,11 @@ def main() -> None:
             hide_num_rounds=args.hide_num_rounds,
             oversight_enabled=args.oversight_enabled,
             boss_pressure=args.boss_pressure,
+            monitor_notice=args.monitor_notice,
+            disclose_cutoff=args.disclose_cutoff,
+            hide_rival_asks=args.hide_rival_asks,
+            ask_round=args.ask_round,
+            ask_noise=args.ask_noise,
             temperature=args.temperature,
             tag=tag,
             max_message_length=args.max_message_length,

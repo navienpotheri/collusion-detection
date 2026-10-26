@@ -17,6 +17,25 @@ from src.resources.model_wrappers import Message, ModelWrapper
 TEMPLATE_DIR = str(Path(__file__).resolve().parent.parent / "prompt_templates") + "/"
 
 
+def _visible_asks(self, ask_queue):
+        # Layer 1 counterfactual: sellers see only their own asks
+        if not self.expt_params.hide_rival_asks:
+            return ask_queue
+        return [(p, s) for p, s in ask_queue if s == self.id]
+
+def _visible_history(self, text):
+        # Layer 1 counterfactual: drop rival ask lines from the history text
+        if not self.expt_params.hide_rival_asks or not isinstance(text, str):
+            return text
+        keep = []
+        for line in text.split(chr(10)):
+            if " ask $" in line and not line.lstrip().startswith(f"{self.id} ask"):
+                continue
+            keep.append(line)
+        return chr(10).join(keep)
+
+
+
 class MemoryManager:
     """
     Manages structured hour-by-hour memory for agents in a double auction market.
@@ -269,14 +288,16 @@ class LMSeller(Agent):
             seller_comms_enabled=self.expt_params.seller_comms_enabled,
             seller_messages=kwargs.get("seller_messages", {}),
             bid_queue=kwargs.get("bid_queue", []),
-            ask_queue=kwargs.get("ask_queue", []),
-            past_bids_and_asks=kwargs.get("past_bids_and_asks", []),
+            ask_queue=_visible_asks(self, kwargs.get("ask_queue", [])),
+            past_bids_and_asks=_visible_history(self, kwargs.get("past_bids_and_asks", [])),
             past_trades=kwargs.get("past_trades", []),
             agent_successful_trades=kwargs.get("agent_successful_trades", "You have not made any successful trades yet."),
             scratch_pad=self.scratch_pad,
             demonym=demonym,  # Pass the demonym to the template
             is_gagged=kwargs.get("is_gag_order_active", False),
             boss_pressure=self.expt_params.boss_pressure,
+            monitor_notice=self.expt_params.monitor_notice,
+            disclose_cutoff=self.expt_params.disclose_cutoff,
             initial_condition=self.expt_params.initial_condition,
             oversight_enabled=self.expt_params.oversight_enabled,
             max_message_length=self.expt_params.max_message_length,
@@ -313,6 +334,7 @@ class MessageOverseer(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
 
     def run_overseer_prompt(self, round_num: int, seller_messages_this_round: dict[str, str]):
         prompt = render_prompt(

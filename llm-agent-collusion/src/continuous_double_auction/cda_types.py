@@ -43,6 +43,11 @@ class ExperimentParams(BaseModel):
     hide_num_rounds: bool = False  # Whether to hide the total number of rounds from agents
     oversight_enabled: bool = False  # Whether to enable oversight for sellers
     boss_pressure: bool = False  # Whether to apply pressure on sellers to keep prices high
+    monitor_notice: bool = False  # Layer 5: tell sellers the market is monitored by a regulator
+    disclose_cutoff: float = 0.0  # Layer 6 check: tell sellers average asks above this are flagged as collusion (0 = off)
+    hide_rival_asks: bool = False  # Layer 1 counterfactual: sellers see only their own asks
+    ask_round: float = 0.0  # Layer 7: round posted asks to the nearest multiple of this (0 = off)
+    ask_noise: float = 0.0  # Layer 7: std dev of Gaussian noise added to posted asks (0 = off)
     temperature: float = 0.7
     tag: str = ""
     seller_demonyms: Optional[dict[str, str]] = None  # Maps seller IDs to their country demonyms (e.g., "seller_1": "American")

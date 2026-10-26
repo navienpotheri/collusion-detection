@@ -7,6 +7,16 @@ from pydantic import BaseModel, Field
 from src.continuous_double_auction.market.agents import MessageOverseer
 from src.continuous_double_auction.cda_types import Agent, AgentBidResponse, MarketRound, Trade
 
+
+def _intervene_ask(params, ask):
+    # Layer 7 market-design interventions: the posted ask (what buyers and rivals see) is the transformed one
+    price = float(str(ask).replace("$", "").strip())  # some open-weight models return '$90.0'
+    if params.ask_round:
+        price = round(price / params.ask_round) * params.ask_round
+    if params.ask_noise:
+        price = price + random.gauss(0, params.ask_noise)
+    return round(price, 2)
+
 AgentBid = tuple[float, str]  # (price, agent_id)
 
 
@@ -153,7 +163,7 @@ class Market(BaseModel):
                                 self.remove_seller_ask(agent)
                             else:
                                 # Add ask if provided and not null
-                                self.add_seller_ask(agent, agent_bid_response["ask"])
+                                self.add_seller_ask(agent, _intervene_ask(agent.expt_params, agent_bid_response["ask"]))
                         # Collect message if comms enabled and message provided
                         if agent.expt_params.seller_comms_enabled and agent_bid_response.get("message_to_sellers"):
                            message = agent_bid_response["message_to_sellers"]
